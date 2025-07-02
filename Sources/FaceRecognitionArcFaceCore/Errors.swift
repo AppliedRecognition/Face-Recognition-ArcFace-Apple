@@ -9,11 +9,14 @@ import Foundation
 
 public enum FaceRecognitionError: LocalizedError {
     case faceTemplateExtractionFailed
+    case imageEncodingFailure
     
     public var errorDescription: String? {
         switch self {
         case .faceTemplateExtractionFailed:
             return NSLocalizedString("Face template extraction failed", comment: "")
+        case .imageEncodingFailure:
+            return NSLocalizedString("Image encoding failed", comment: "")
         }
     }
 }

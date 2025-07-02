@@ -17,17 +17,26 @@ public class FaceRecognitionArcFace: FaceRecognitionArcFaceCore {
     }
     
     public override func createFaceRecognitionTemplatesFromAlignedFaces(_ alignedFaces: [UIImage]) async throws -> [FaceTemplate<V24,[Float]>] {
-        let boundary = UUID().uuidString
-        let body = self.multipartBodyFromFaceImages(alignedFaces, boundary: boundary)
+        let body = try self.requestBodyFromFaceImages(alignedFaces)
         var request = URLRequest(url: self.url)
         request.httpMethod = "POST"
         request.addValue(self.apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.upload(for: request, from: body)
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode < 400 else {
             throw FaceRecognitionError.faceTemplateExtractionFailed
         }
         return try JSONDecoder().decode([FaceTemplate<V24,[Float]>].self, from: data)
+    }
+    
+    private func requestBodyFromFaceImages(_ images: [UIImage]) throws -> Data {
+        let encodedImages = try images.map { image in
+            guard let jpeg = image.jpegData(compressionQuality: 1.0) else {
+                throw FaceRecognitionError.imageEncodingFailure
+            }
+            return jpeg
+        }
+        return try JSONEncoder().encode(RequestBody(images: encodedImages))
     }
     
     private func multipartBodyFromFaceImages(_ images: [UIImage], boundary: String) -> Data {
@@ -48,4 +57,8 @@ public class FaceRecognitionArcFace: FaceRecognitionArcFaceCore {
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         return body
     }
+}
+
+fileprivate struct RequestBody: Encodable {
+    let images: [Data]
 }
