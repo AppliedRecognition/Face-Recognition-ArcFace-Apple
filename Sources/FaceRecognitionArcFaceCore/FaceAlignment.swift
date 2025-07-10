@@ -77,15 +77,22 @@ class FaceAlignment {
     private init() {}
     
     static func alignFace(_ face: Face, image: Image) throws -> UIImage {
-        guard let noseTip = face.noseTip, let mouthCentre = face.mouthCentre else {
-            throw NSError()
+        guard let noseTip = face.noseTip else {
+            throw FaceRecognitionError.faceMissingNoseTipLandmark
         }
-        let landmarks: [CGPoint] = [
+        var landmarks: [CGPoint] = [
             face.leftEye,
             face.rightEye,
-            noseTip,
-            mouthCentre
+            noseTip
         ]
+        if let mouthLeftCorner = face.mouthLeftCorner, let mouthRightCorner = face.mouthRightCorner {
+            landmarks.append(mouthLeftCorner)
+            landmarks.append(mouthRightCorner)
+        } else if let mouthCentre = face.mouthCentre {
+            landmarks.append(mouthCentre)
+        } else {
+            throw FaceRecognitionError.faceMissingMouthLandmarks
+        }
         let alignedBox = try FaceAlignment.alignFace(pts: landmarks, scale: 2.85)
         return try FaceAlignment.cropFace(in: image, to: alignedBox)
     }
@@ -120,7 +127,7 @@ class FaceAlignment {
         
         let c = reg.compute()
         guard c.count == 4 else {
-            throw NSError()
+            throw FaceRecognitionError.faceAlignmentFailure
         }
         
         let centerX = c[2]
@@ -135,7 +142,7 @@ class FaceAlignment {
         let scale = targetSize.width / rotatedBox.width
         
         guard let cgImage = image.toCGImage() else {
-            throw NSError()
+            throw FaceRecognitionError.imageConversionFailure
         }
         let uiImage = UIImage(cgImage: cgImage)
         let format = UIGraphicsImageRendererFormat()
