@@ -18,7 +18,7 @@ let package = Package(
             targets: ["FaceRecognitionArcFaceCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/AppliedRecognition/Ver-ID-Common-Types-Apple.git", .upToNextMajor(from: "2.1.0")),
+        .package(url: "https://github.com/AppliedRecognition/Ver-ID-Common-Types-Apple.git", .upToNextMajor(from: "3.0.0")),
         .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", .upToNextMajor(from: "9.1.0"))
     ],
     targets: [

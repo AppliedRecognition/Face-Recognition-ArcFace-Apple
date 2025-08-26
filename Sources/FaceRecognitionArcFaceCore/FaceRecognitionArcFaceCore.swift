@@ -11,6 +11,9 @@ import UIKit
 import Accelerate
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
+
+    public var defaultThreshold: Float = 0.68
+    
     public typealias Version = V24
     public typealias TemplateData = [Float]
     
@@ -38,7 +41,9 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
             var dotProduct: Float = 0.0
             vDSP_dotpr(template.data, 1, t.data, 1, &dotProduct, n)
             let templateNorm = self.norm(t.data)
-            return dotProduct / (challengeNorm * templateNorm)
+            let cosine = dotProduct / (challengeNorm * templateNorm)
+            let similarity = (cosine + 1.0) * 0.5
+            return min(max(similarity, 0.0), 1.0)
         }
     }
     

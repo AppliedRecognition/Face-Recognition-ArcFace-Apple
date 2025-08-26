@@ -23,10 +23,10 @@ You will need an API key to use the face recognition in your project. The API ke
 import UIKit
 import VerIDCommonTypes
 import FaceRecognitionArcFace
-import FaceDetectionMediaPipe
+import FaceDetectionRetinaFace
 
 let faceRecognition = FaceRecognitionArcFace(apiKey: <your API key>, url: <API URL>)
-let faceDetection = try FaceLandmarkDetectionMediaPipe()
+let faceDetection = try FaceDetectionRetinaFace()
 
 func isPersonInImage(_ image1: UIImage, sameAsPersonInImage image2: UIImage) async throws -> Bool {
     // 1. Create Ver-ID images from UIImages
