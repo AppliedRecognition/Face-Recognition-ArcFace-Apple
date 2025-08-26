@@ -11,6 +11,9 @@ import UIKit
 import Accelerate
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
+
+    public var defaultThreshold: Float = 0.68
+    
     public typealias Version = V24
     public typealias TemplateData = [Float]
     
