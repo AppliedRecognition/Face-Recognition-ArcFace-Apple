@@ -70,7 +70,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         }
         let scoreSame = try await faceRecognition.compareFaceRecognitionTemplates([templates[0]], to: templates[1]).first!
         let scoreDifferent = try await faceRecognition.compareFaceRecognitionTemplates([templates[0]], to: templates[2]).first!
-        let threshold: Float = 0.5
+        let threshold: Float = faceRecognition.defaultThreshold
         XCTAssertGreaterThanOrEqual(scoreSame, threshold)
         XCTAssertLessThan(scoreDifferent, threshold)
     }
