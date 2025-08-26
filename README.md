@@ -49,8 +49,7 @@ func isPersonInImage(_ image1: UIImage, sameAsPersonInImage image2: UIImage) asy
     let score = try await faceRecognition.compareFaceRecognitionTemplates([faceTemplate1], to: faceTemplate2).first!
     
     // 5. Return whether score > threshold
-    let threshold: Float = 0.5
-    return score >= threshold
+    return score >= faceRecognition.defaultThreshold
 }
 
 func detectFaceInImage(_ image: Image) async throws -> Face {
