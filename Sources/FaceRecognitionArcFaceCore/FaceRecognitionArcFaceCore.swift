@@ -12,7 +12,7 @@ import Accelerate
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
 
-    public var defaultThreshold: Float = 0.68
+    public var defaultThreshold: Float = 0.8
     
     public typealias Version = V24
     public typealias TemplateData = [Float]
@@ -27,7 +27,12 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
         let alignedFaces = try faces.map { face in
             try FaceAlignment.alignFace(face, image: image)
         }
-        return try await self.createFaceRecognitionTemplatesFromAlignedFaces(alignedFaces)
+        let templates = try await self.createFaceRecognitionTemplatesFromAlignedFaces(alignedFaces)
+        return templates.map { template in
+            var data = template.data
+            self.normalize(&data)
+            return FaceTemplate(data: data)
+        }
     }
     
     open func createFaceRecognitionTemplatesFromAlignedFaces(_ alignedFaces: [UIImage]) async throws -> [FaceTemplate<V24,[Float]>] {
@@ -52,5 +57,13 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
         var norm: Float = 0.0
         vDSP_svesq(template, 1, &norm, n)
         return sqrt(norm)
+    }
+    
+    func normalize(_ x: inout [Float]) {
+        let n = norm(x)
+        if n > 0 {
+            let inv = 1/n
+            vDSP_vsmul(x, 1, [inv], &x, 1, vDSP_Length(x.count))
+        }
     }
 }
