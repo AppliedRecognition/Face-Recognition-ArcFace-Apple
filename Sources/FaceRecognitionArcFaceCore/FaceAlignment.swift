@@ -72,11 +72,12 @@ struct RotatedBox {
     let height: Double
 }
 
-class FaceAlignment {
+@_spi(Testing)
+public class FaceAlignment {
     
     private init() {}
     
-    static func alignFace(_ face: Face, image: Image) throws -> UIImage {
+    @_spi(Testing) public static func alignFace(_ face: Face, image: Image) throws -> UIImage {
         guard let noseTip = face.noseTip else {
             throw FaceRecognitionError.faceMissingNoseTipLandmark
         }
