@@ -59,7 +59,7 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
         return sqrt(norm)
     }
     
-    func normalize(_ x: inout [Float]) {
+    @_spi(Testing) public func normalize(_ x: inout [Float]) {
         let n = norm(x)
         if n > 0 {
             let inv = 1/n
