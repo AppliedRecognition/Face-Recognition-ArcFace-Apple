@@ -17,6 +17,17 @@ import OnnxRuntimeBindings
     @_spi(Testing) public func ortTensorFromPixelBuffer(_ pixelBuffer: CVPixelBuffer, scaledToSize size: CGSize) throws -> (ORTValue, CGFloat) {
         let argbBuffer = try self.argbBufferFromPixelBuffer(pixelBuffer)
         var (scaledBuffer, scale) = try self.argbBuffer(srcARGB: argbBuffer, scaledToFit: size)
+        let (nchw, width, height) = try self.rgbPlanesFromARGBBuffer(scaledBuffer)
+        let shape: [NSNumber] = [1, 3, NSNumber(value: height), NSNumber(value: width)]
+        let mutableData: NSMutableData = nchw.withUnsafeBufferPointer { ptr in
+            NSMutableData(bytes: ptr.baseAddress!, length: ptr.count * MemoryLayout<Float>.stride)
+        }
+        let tensor = try ORTValue(tensorData: mutableData, elementType: .float, shape: shape)
+        return (tensor, scale)
+    }
+    
+    @_spi(Testing) public func rgbPlanesFromARGBBuffer(_ buffer: vImage_Buffer) throws -> (buffer: [Float], width: Int, height:Int) {
+        var scaledBuffer = buffer
         let width = Int(scaledBuffer.width)
         let height = Int(scaledBuffer.height)
         let pixelCount = width * height
@@ -31,17 +42,12 @@ import OnnxRuntimeBindings
             var blue = vImage_Buffer(data: nchwBase.advanced(by: pixelCount * 2), height: scaledBuffer.height, width: scaledBuffer.width, rowBytes: rowBytes)
             var minF: Float = -127.5/128.0
             var maxF: Float = 127.5/128.0
-            let err = vImageConvert_ARGB8888toPlanarF(&scaledBuffer, &alpha, &red, &green, &blue, &minF, &maxF, vImage_Flags(kvImageNoFlags))
+            let err = vImageConvert_ARGB8888toPlanarF(&scaledBuffer, &alpha, &red, &green, &blue, &maxF, &minF, vImage_Flags(kvImageNoFlags))
             guard err == kvImageNoError else {
                 throw FaceDetectionRetinaFaceError.imageResizingError
             }
         }
-        let shape: [NSNumber] = [1, 3, NSNumber(value: height), NSNumber(value: width)]
-        let mutableData: NSMutableData = nchw.withUnsafeBufferPointer { ptr in
-            NSMutableData(bytes: ptr.baseAddress!, length: ptr.count * MemoryLayout<Float>.stride)
-        }
-        let tensor = try ORTValue(tensorData: mutableData, elementType: .float, shape: shape)
-        return (tensor, scale)
+        return (nchw, width, height)
     }
     
     func argbBufferFromPixelBuffer(_ pixelBuffer: CVPixelBuffer) throws -> vImage_Buffer {
