@@ -74,6 +74,11 @@ let package = Package(
                 "FaceRecognitionArcFaceCore",
                 "FaceDetectionRetinaFaceOrt",
                 "TestSupport"
+            ]),
+        .testTarget(
+            name: "FaceDetectionRetinaFaceOrtTests",
+            dependencies: [
+                "FaceDetectionRetinaFaceOrt"
             ])
     ]
 )
