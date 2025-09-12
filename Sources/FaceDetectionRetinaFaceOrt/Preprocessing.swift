@@ -31,7 +31,7 @@ import OnnxRuntimeBindings
             var blue = vImage_Buffer(data: nchwBase.advanced(by: pixelCount * 2), height: scaledBuffer.height, width: scaledBuffer.width, rowBytes: rowBytes)
             var minF: Float = -127.5/128.0
             var maxF: Float = 127.5/128.0
-            let err = vImageConvert_ARGB8888toPlanarF(&scaledBuffer, &alpha, &red, &green, &blue, &maxF, &minF, vImage_Flags(kvImageNoFlags))
+            let err = vImageConvert_ARGB8888toPlanarF(&scaledBuffer, &alpha, &red, &green, &blue, &minF, &maxF, vImage_Flags(kvImageNoFlags))
             guard err == kvImageNoError else {
                 throw FaceDetectionRetinaFaceError.imageResizingError
             }
