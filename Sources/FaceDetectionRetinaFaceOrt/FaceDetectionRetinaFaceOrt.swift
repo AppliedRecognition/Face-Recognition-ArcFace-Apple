@@ -48,7 +48,7 @@ public final class FaceDetectionRetinaFaceOrt: FaceDetection {
     /// - Returns: Array of detected faces
     public func detectFacesInImage(_ image: Image, limit: Int) async throws -> [Face] {
         let (input, scale) = try self.modelInputPrep.ortTensorFromPixelBuffer(image.videoBuffer, scaledToSize: self.inputSize)
-        let output = try self.session.run(withInputs: ["input.1": input], outputNames: ["443", "468", "493", "446", "471", "496", "449", "474", "499"], runOptions: nil)
+        let output = try self.runInference(input: input)
         guard let scores32 = output["493"], let scores16 = output["468"], let scores8 = output["443"] else {
             throw FaceDetectionRetinaFaceError.postProcessingError
         }
@@ -77,5 +77,9 @@ public final class FaceDetectionRetinaFaceOrt: FaceDetection {
             )
         }
         return Array(faces.prefix(limit))
+    }
+    
+    @_spi(Testing) public func runInference(input: ORTValue) throws -> [String: ORTValue] {
+        return try self.session.run(withInputs: ["input.1": input], outputNames: ["443", "468", "493", "446", "471", "496", "449", "474", "499"], runOptions: nil)
     }
 }

@@ -11,7 +11,7 @@ import VerIDCommonTypes
 import Accelerate
 import OnnxRuntimeBindings
 
-struct Postprocessing {
+@_spi(Testing) public struct Postprocessing {
     
     let inputWidth: Int
     let inputHeight: Int
@@ -19,12 +19,12 @@ struct Postprocessing {
     let numAnchors: Int = 2
     let scoreThreshold: Float = 0.3
     
-    init(inputWidth: Int, inputHeight: Int) {
+    @_spi(Testing) public init(inputWidth: Int, inputHeight: Int) {
         self.inputWidth = inputWidth
         self.inputHeight = inputHeight
     }
     
-    func decode(scores: [ORTValue], boxes: [ORTValue], landmarks: [ORTValue]) throws -> [DetectionBox] {
+    @_spi(Testing) public func decode(scores: [ORTValue], boxes: [ORTValue], landmarks: [ORTValue]) throws -> [DetectionBox] {
         precondition(scores.count == 3 && boxes.count == 3 && landmarks.count == 3, "Expect 3 heads per output")
         
         var detections: [DetectionBox] = []
@@ -161,12 +161,12 @@ struct Postprocessing {
     }
 }
 
-struct DetectionBox: Encodable {
-    let score: Float
-    let bounds: CGRect
-    let landmarks: [CGPoint]
-    let angle: EulerAngle<Float>
-    let quality: Float
+@_spi(Testing) public struct DetectionBox: Encodable {
+    @_spi(Testing) public let score: Float
+    @_spi(Testing) public let bounds: CGRect
+    @_spi(Testing) public let landmarks: [CGPoint]
+    @_spi(Testing) public let angle: EulerAngle<Float>
+    @_spi(Testing) public let quality: Float
     
     enum CodingKeys: CodingKey {
         case bounds, landmarks
@@ -176,11 +176,11 @@ struct DetectionBox: Encodable {
         case x, y, width, height
     }
     
-    func applyingTransform(_ transform: CGAffineTransform) -> DetectionBox {
+    @_spi(Testing) public func applyingTransform(_ transform: CGAffineTransform) -> DetectionBox {
         return DetectionBox(score: self.score, bounds: self.bounds.applying(transform), landmarks: self.landmarks.map { $0.applying(transform) }, angle: self.angle, quality: self.quality)
     }
     
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         var boundsContainer = container.nestedContainer(keyedBy: BoundsCodingKeys.self, forKey: .bounds)
         try boundsContainer.encode(self.bounds.minX, forKey: .x)

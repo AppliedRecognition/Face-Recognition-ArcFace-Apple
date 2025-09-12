@@ -10,9 +10,9 @@ import CoreML
 import Accelerate
 import OnnxRuntimeBindings
 
-struct Preprocessing {
+@_spi(Testing) public struct Preprocessing {
     
-    func ortTensorFromPixelBuffer(_ pixelBuffer: CVPixelBuffer, scaledToSize size: CGSize) throws -> (ORTValue, CGFloat) {
+    @_spi(Testing) public func ortTensorFromPixelBuffer(_ pixelBuffer: CVPixelBuffer, scaledToSize size: CGSize) throws -> (ORTValue, CGFloat) {
         let argbBuffer = try self.argbBufferFromPixelBuffer(pixelBuffer)
         var (scaledBuffer, scale) = try self.argbBuffer(srcARGB: argbBuffer, scaledToFit: size)
         let width = Int(scaledBuffer.width)
