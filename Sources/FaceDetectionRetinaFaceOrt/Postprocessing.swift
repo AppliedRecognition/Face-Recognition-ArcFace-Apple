@@ -92,7 +92,7 @@ import OnnxRuntimeBindings
         return detections
     }
     
-    @_spi(Testing) func nonMaxSuppression(boxes: [DetectionBox], iouThreshold: Float, limit: Int) -> [DetectionBox] {
+    @_spi(Testing) public func nonMaxSuppression(boxes: [DetectionBox], iouThreshold: Float, limit: Int) -> [DetectionBox] {
         var selected: [DetectionBox] = []
         let sorted = boxes.sorted(by: { $0.score > $1.score })
         
@@ -106,7 +106,7 @@ import OnnxRuntimeBindings
         return selected
     }
     
-    @_spi(Testing) func calculateFaceAngle(leftEye: CGPoint, rightEye: CGPoint, noseTip: CGPoint, leftMouth: CGPoint, rightMouth: CGPoint) -> EulerAngle<Float> {
+    @_spi(Testing) public func calculateFaceAngle(leftEye: CGPoint, rightEye: CGPoint, noseTip: CGPoint, leftMouth: CGPoint, rightMouth: CGPoint) -> EulerAngle<Float> {
         let dx = rightEye.x - leftEye.x
         let dy = rightEye.y - leftEye.y
         let roll = atan2(dy, dx).degrees
