@@ -12,6 +12,8 @@ import OnnxRuntimeBindings
 
 @_spi(Testing) public struct Preprocessing {
     
+    @_spi(Testing) public init() {}
+    
     @_spi(Testing) public func ortTensorFromPixelBuffer(_ pixelBuffer: CVPixelBuffer, scaledToSize size: CGSize) throws -> (ORTValue, CGFloat) {
         let argbBuffer = try self.argbBufferFromPixelBuffer(pixelBuffer)
         var (scaledBuffer, scale) = try self.argbBuffer(srcARGB: argbBuffer, scaledToFit: size)
