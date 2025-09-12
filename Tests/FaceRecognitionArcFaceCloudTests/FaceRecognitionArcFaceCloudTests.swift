@@ -4,16 +4,23 @@ import OHHTTPStubsSwift
 import VerIDCommonTypes
 import FaceRecognitionArcFaceCore
 import TestSupport
+import UniformTypeIdentifiers
+import FaceDetectionRetinaFaceOrt
 @testable import FaceRecognitionArcFaceCloud
 
 final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     
-    let testResources = TestSupportResources()
+    var testResources: TestSupportResources!
+    var recognition: FaceRecognitionArcFace!
+    var faceDetection: FaceDetectionRetinaFaceOrt!
     
-    override func setUp() {
+    override func setUpWithError() throws {
         super.setUp()
         HTTPStubs.setEnabled(true)
         HTTPStubs.removeAllStubs()
+        self.testResources = try TestSupportResources()
+        self.recognition = try self.createFaceRecognition()
+        self.faceDetection = try FaceDetectionRetinaFaceOrt()
     }
     
     override func tearDown() {
@@ -36,10 +43,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
                 return HTTPStubsResponse(error: error)
             }
         }
-        guard let (face, image) = self.testResources.faceAndImageForSubject(subject) else {
-            XCTFail("Failed to get face for subject \(subject)")
-            return
-        }
+        let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
         let faceRecognition = FaceRecognitionArcFace(apiKey: "", url: URL(string: "http://api.ver-id.com/face_templates")!)
         let templates = try await faceRecognition.createFaceRecognitionTemplates(from: [face], in: image)
         XCTAssertEqual(templates.count, 1)
@@ -47,10 +51,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     
     func testCreateFaceTemplateInCloud() async throws {
         let subject = "subject1-01"
-        guard let (face, image) = self.testResources.faceAndImageForSubject(subject) else {
-            XCTFail("Failed to get face for subject \(subject)")
-            return
-        }
+        let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
         let faceRecognition = try self.createFaceRecognition()
         let templates = try await faceRecognition.createFaceRecognitionTemplates(from: [face], in: image)
         XCTAssertEqual(templates.count, 1)
@@ -60,9 +61,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         let faceRecognition = try self.createFaceRecognition()
         var templates: [FaceTemplate<V24,[Float]>] = []
         for subject in ["subject1-01", "subject1-02", "subject2-01"] {
-            guard let (face, image) = self.testResources.faceAndImageForSubject(subject) else {
-                throw XCTSkip()
-            }
+            let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
             guard let template = try await faceRecognition.createFaceRecognitionTemplates(from: [face], in: image).first else {
                 throw XCTSkip()
             }
@@ -90,6 +89,67 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         }
         return FaceRecognitionArcFace(apiKey: config.apiKey, url: url)
     }
+    
+    private func image(_ image: Image, croppedToFace face: CGRect) -> UIImage {
+        let uiImage = UIImage(cgImage: image.toCGImage()!)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: face.size, format: format).image { context in
+            uiImage.draw(at: CGPoint(x: 0-face.minX, y: 0-face.minY))
+        }
+    }
+    
+    private func imageAndFaceFromResource(_ resource: String) async throws -> ImageFacePackage {
+        guard let url = Bundle.module.url(forResource: resource, withExtension: nil) else {
+            throw TestError("Failed to get resource \(resource)")
+        }
+        guard let imageData = try? Data(contentsOf: url) else {
+            throw TestError("Failed to read image from \(url)")
+        }
+        guard let uiImage = UIImage(data: imageData), let cgImage = uiImage.cgImage else {
+            throw TestError("Failed to convert image")
+        }
+        let orientation: CGImagePropertyOrientation
+        switch uiImage.imageOrientation {
+        case .up:
+            orientation = .up
+        case .down:
+            orientation = .down
+        case .left:
+            orientation = .left
+        case .right:
+            orientation = .right
+        case .upMirrored:
+            orientation = .upMirrored
+        case .downMirrored:
+            orientation = .downMirrored
+        case .leftMirrored:
+            orientation = .leftMirrored
+        case .rightMirrored:
+            orientation = .rightMirrored
+        default:
+            orientation = .up
+        }
+        guard let image = Image(cgImage: cgImage, orientation: orientation) else {
+            throw TestError("Failed to decode image from CGImage")
+        }
+        guard let face = try await self.faceDetection.detectFacesInImage(image, limit: 1).first else {
+            throw TestError("Failed to detect face in image \(url)")
+        }
+        let faceImage = self.image(image, croppedToFace: face.bounds)
+        let width: CGFloat = 100
+        let height = width / faceImage.size.width * faceImage.size.height
+        let size = CGSize(width: width, height: height)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let scaledFaceImage = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            faceImage.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let template = try await self.recognition.createFaceRecognitionTemplates(from: [face], in: image).first else {
+            throw TestError("Face template extraction failed")
+        }
+        return ImageFacePackage(template: template, faceImage: scaledFaceImage)
+    }
 }
 
 fileprivate struct Config: Decodable {
@@ -97,4 +157,23 @@ fileprivate struct Config: Decodable {
     let apiKey: String
     let url: String
     
+}
+
+fileprivate struct ImageFacePackage {
+    
+    let template: FaceTemplate<V24, [Float]>
+    let faceImage: UIImage
+}
+
+fileprivate struct TestError: LocalizedError {
+    
+    private let desc: String
+    
+    init(_ errorDescription: String) {
+        self.desc = errorDescription
+    }
+    
+    var errorDescription: String? {
+        self.desc
+    }
 }
