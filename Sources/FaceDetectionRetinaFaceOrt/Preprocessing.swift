@@ -31,23 +31,29 @@ import OnnxRuntimeBindings
         let width = Int(scaledBuffer.width)
         let height = Int(scaledBuffer.height)
         let pixelCount = width * height
-        var nchw = [Float](repeating: 0, count: pixelCount * 3)
-        var alpha = try vImage_Buffer(width: width, height: height, bitsPerPixel: UInt32(32))
-        defer { alpha.free() }
-        try nchw.withUnsafeMutableBufferPointer { buf in
-            let nchwBase = buf.baseAddress!
-            let rowBytes = width * MemoryLayout<Float>.stride
-            var red = vImage_Buffer(data: nchwBase, height: scaledBuffer.height, width: scaledBuffer.width, rowBytes: rowBytes)
-            var green = vImage_Buffer(data: nchwBase.advanced(by: pixelCount), height: scaledBuffer.height, width: scaledBuffer.width, rowBytes: rowBytes)
-            var blue = vImage_Buffer(data: nchwBase.advanced(by: pixelCount * 2), height: scaledBuffer.height, width: scaledBuffer.width, rowBytes: rowBytes)
-            var minF: Float = -127.5/128.0
-            var maxF: Float = 127.5/128.0
-            let err = vImageConvert_ARGB8888toPlanarF(&scaledBuffer, &alpha, &red, &green, &blue, &maxF, &minF, vImage_Flags(kvImageNoFlags))
-            guard err == kvImageNoError else {
+        let totalCount = pixelCount * 3
+        var contiguous: [UInt8] = Array(repeating: 0, count: totalCount)
+        try contiguous.withUnsafeMutableBufferPointer { buf in
+            let rowBytes = width
+            var a = try vImage_Buffer(size: CGSize(width: width, height: height), bitsPerPixel: 8)
+            var r = vImage_Buffer(data: buf.baseAddress!, height: vImagePixelCount(height), width: vImagePixelCount(width), rowBytes: rowBytes)
+            var g = vImage_Buffer(data: buf.baseAddress!.advanced(by: pixelCount), height: vImagePixelCount(height), width: vImagePixelCount(width), rowBytes: rowBytes)
+            var b = vImage_Buffer(data: buf.baseAddress!.advanced(by: pixelCount * 2), height: vImagePixelCount(height), width: vImagePixelCount(width), rowBytes: rowBytes)
+            guard vImageConvert_ARGB8888toPlanar8(&scaledBuffer, &a, &r, &g, &b, vImage_Flags(kvImageNoFlags)) == kvImageNoError else {
                 throw FaceDetectionRetinaFaceError.imageResizingError
             }
         }
-        return (nchw, width, height)
+        var contiguousF = [Float](repeating: 0, count: totalCount)
+        vDSP_vfltu8(&contiguous, 1, &contiguousF, 1, vDSP_Length(totalCount))
+        let minF: Float = -127.5/128.0
+        let maxF: Float = 127.5/128.0
+        var scale = (maxF - minF) / 255.0
+        var offset = minF
+        contiguousF.withUnsafeMutableBufferPointer { buf in
+            let ptr = buf.baseAddress!
+            vDSP_vsmsa(ptr, 1, &scale, &offset, ptr, 1, vDSP_Length(totalCount))
+        }
+        return (contiguousF, width, height)
     }
     
     func argbBufferFromPixelBuffer(_ pixelBuffer: CVPixelBuffer) throws -> vImage_Buffer {
