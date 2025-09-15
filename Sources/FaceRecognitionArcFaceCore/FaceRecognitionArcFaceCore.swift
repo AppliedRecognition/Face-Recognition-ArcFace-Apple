@@ -9,22 +9,27 @@ import Foundation
 import VerIDCommonTypes
 import UIKit
 import Accelerate
+import FaceDetectionRetinaFaceOrt
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
 
-    public var defaultThreshold: Float = 0.8
+    public var defaultThreshold: Float = 0.6
     
     public typealias Version = V24
     public typealias TemplateData = [Float]
+    
+    let faceDetection: FaceDetectionRetinaFaceOrt
     
     public init() throws {
         guard type(of: self) != FaceRecognitionArcFaceCore.self else {
             fatalError("Abstract base class called its initialiser")
         }
+        self.faceDetection = try FaceDetectionRetinaFaceOrt()
     }
     
     public func createFaceRecognitionTemplates(from faces: [Face], in image: Image) async throws -> [FaceTemplate<V24,[Float]>] {
-        let alignedFaces = try faces.map { face in
+        let refinedFaces = try await self.refineFaces(faces, inImage: image)
+        let alignedFaces = try refinedFaces.map { face in
             try FaceAlignment.alignFace(face, image: image)
         }
         let templates = try await self.createFaceRecognitionTemplatesFromAlignedFaces(alignedFaces)
@@ -47,8 +52,7 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
             vDSP_dotpr(template.data, 1, t.data, 1, &dotProduct, n)
             let templateNorm = self.norm(t.data)
             let cosine = dotProduct / (challengeNorm * templateNorm)
-            let similarity = (cosine + 1.0) * 0.5
-            return min(max(similarity, 0.0), 1.0)
+            return min(max(cosine, 0.0), 1.0)
         }
     }
     
@@ -59,11 +63,41 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
         return sqrt(norm)
     }
     
-    func normalize(_ x: inout [Float]) {
+    @_spi(Testing) public func normalize(_ x: inout [Float]) {
         let n = norm(x)
         if n > 0 {
             let inv = 1/n
             vDSP_vsmul(x, 1, [inv], &x, 1, vDSP_Length(x.count))
         }
+    }
+    
+    @_spi(Testing) public func refineFaces(_ faces: [Face], inImage image: Image) async throws -> [Face] {
+        let detectedFaces = try await self.faceDetection.detectFacesInImage(image, limit: faces.count)
+        guard detectedFaces.count == faces.count else {
+            throw FaceRecognitionError.faceDetectionFailure
+        }
+        let refinedFaces: [Face] = faces.compactMap { originalFace in
+            return detectedFaces.min { a, b in
+                return a.eyeCentre.distance(to: originalFace.eyeCentre) < b.eyeCentre.distance(to: originalFace.eyeCentre)
+            }
+        }
+        guard refinedFaces.count == faces.count else {
+            throw FaceRecognitionError.faceDetectionFailure
+        }
+        return refinedFaces
+    }
+}
+
+fileprivate extension CGPoint {
+    
+    func distance(to other: CGPoint) -> CGFloat {
+        return hypot(other.y - self.y, other.x - self.x)
+    }
+}
+
+fileprivate extension Face {
+    
+    var eyeCentre: CGPoint {
+        CGPoint(x: (self.rightEye.x + self.leftEye.x) * 0.5, y: (self.rightEye.y + self.leftEye.y) * 0.5)
     }
 }

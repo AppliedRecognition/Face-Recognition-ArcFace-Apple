@@ -14,6 +14,7 @@ public enum FaceRecognitionError: LocalizedError {
     case faceMissingNoseTipLandmark
     case faceMissingMouthLandmarks
     case faceAlignmentFailure
+    case faceDetectionFailure
     
     public var errorDescription: String? {
         switch self {
@@ -29,6 +30,8 @@ public enum FaceRecognitionError: LocalizedError {
             return NSLocalizedString("Input face is missing mouth landmarks", comment: "")
         case .faceAlignmentFailure:
             return NSLocalizedString("Face alignment failed", comment: "")
+        case .faceDetectionFailure:
+            return NSLocalizedString("Face detection failed", comment: "")
         }
     }
 }

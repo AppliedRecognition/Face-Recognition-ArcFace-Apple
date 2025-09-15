@@ -8,29 +8,19 @@
 import XCTest
 import Foundation
 import TestSupport
-@testable import FaceRecognitionArcFaceCore
+@testable @_spi(Testing) import FaceRecognitionArcFaceCore
 
 final class FaceRecognitionArcFaceCoreTests: XCTestCase {
     
-    let testResources = TestSupportResources()
+    var testResources: TestSupportResources!
     
-    func testFaceAlignment() throws {
-        guard let (face, image) = self.testResources.faceAndImageForSubject("subject1-01") else {
-            XCTFail()
-            return
-        }
-        let alignedImage = try FaceAlignment.alignFace(face, image: image)
-        let att = XCTAttachment(image: alignedImage)
-        att.lifetime = .keepAlways
-        self.add(att)
+    override func setUpWithError() throws {
+        self.testResources = try TestSupportResources()
     }
     
-    func testAttachAlignedFaceImages() throws {
-        try ["subject1-01", "subject1-02", "subject2-01"].forEach { name in
-            guard let (face, image) = self.testResources.faceAndImageForSubject(name) else {
-                XCTFail()
-                return
-            }
+    func testAttachAlignedFaceImages() async throws {
+        for name in ["subject1-01", "subject1-02", "subject2-01"] {
+            let (face, image) = try await self.testResources.faceAndImageForSubject(name)
             let aligned = try FaceAlignment.alignFace(face, image: image)
             let attachment = XCTAttachment(image: aligned)
             attachment.lifetime = .keepAlways
