@@ -13,7 +13,7 @@ import FaceDetectionRetinaFaceOrt
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
 
-    public var defaultThreshold: Float = 0.8
+    public var defaultThreshold: Float = 0.6
     
     public typealias Version = V24
     public typealias TemplateData = [Float]
@@ -52,8 +52,7 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
             vDSP_dotpr(template.data, 1, t.data, 1, &dotProduct, n)
             let templateNorm = self.norm(t.data)
             let cosine = dotProduct / (challengeNorm * templateNorm)
-            let similarity = (cosine + 1.0) * 0.5
-            return min(max(similarity, 0.0), 1.0)
+            return min(max(cosine, 0.0), 1.0)
         }
     }
     
