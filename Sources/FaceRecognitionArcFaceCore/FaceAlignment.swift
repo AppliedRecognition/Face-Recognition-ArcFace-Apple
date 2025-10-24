@@ -140,21 +140,21 @@ public class FaceAlignment {
     }
     
     private static func cropFace(in image: Image, to rotatedBox: RotatedBox, targetSize: CGSize = CGSize(width: 112, height: 112)) throws -> UIImage {
-        let scale = targetSize.width / rotatedBox.width
-        
-        guard let cgImage = image.toCGImage() else {
-            throw FaceRecognitionError.imageConversionFailure
-        }
-        let uiImage = UIImage(cgImage: cgImage)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1.0
-        return UIGraphicsImageRenderer(size: targetSize, format: format).image { context in
-            let cgContext = context.cgContext
-            cgContext.translateBy(x: targetSize.width / 2, y: targetSize.height / 2)
-            cgContext.rotate(by: -rotatedBox.angle)
-            cgContext.scaleBy(x: CGFloat(scale), y: CGFloat(scale))
-            cgContext.translateBy(x: -rotatedBox.center.x, y: -rotatedBox.center.y)
-            uiImage.draw(at: CGPoint(x: 0, y: 0))
+        return try autoreleasepool {
+            guard let cgImage = image.toCGImage() else {
+                throw FaceRecognitionError.imageConversionFailure
+            }
+            let scale = targetSize.width / rotatedBox.width
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1.0
+            return UIGraphicsImageRenderer(size: targetSize, format: format).image { context in
+                let cg = context.cgContext
+                cg.translateBy(x: targetSize.width / 2, y: targetSize.height / 2)
+                cg.rotate(by: -rotatedBox.angle)
+                cg.scaleBy(x: CGFloat(scale), y: CGFloat(scale))
+                cg.translateBy(x: -rotatedBox.center.x, y: -rotatedBox.center.y)
+                cg.draw(cgImage, in: CGRect(origin: .zero, size: CGSize(width: cgImage.width, height: cgImage.height)))
+            }
         }
     }
 }
