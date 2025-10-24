@@ -148,8 +148,10 @@ import OnnxRuntimeBindings
     }
     
     private func floatArray(from value: ORTValue) throws -> [Float] {
-        let data = try value.tensorData() as Data
-        return data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        return try autoreleasepool {
+            let data = try value.tensorData() as Data
+            return data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        }
     }
     
     private func iou(_ a: CGRect, _ b: CGRect) -> CGFloat {
