@@ -17,7 +17,7 @@ public final class FaceDetectionRetinaFaceOrt: FaceDetection {
     
     /// Initializer
     /// - Throws: Exception of ML model initialization fails
-    public init() throws {
+    public init() async throws {
         let env = try ORTEnv(loggingLevel: .error)
         guard let modelPath = Bundle.module.path(forResource: "det_500m", ofType: "onnx") else {
             throw FaceDetectionRetinaFaceError.modelNotFound("det_500m.onnx")

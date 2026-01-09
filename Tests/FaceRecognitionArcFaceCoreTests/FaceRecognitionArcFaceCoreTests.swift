@@ -17,8 +17,8 @@ final class FaceRecognitionArcFaceCoreTests: XCTestCase {
     // Modify as needed
     let dataSetLoaderURL = URL(string: "http://192.168.1.217:3000/original")!
     
-    override func setUpWithError() throws {
-        self.testResources = try TestSupportResources()
+    override func setUp() async throws {
+        self.testResources = try await TestSupportResources()
     }
     
     func testAttachAlignedFaceImages() async throws {
@@ -56,7 +56,7 @@ final class FaceRecognitionArcFaceCoreTests: XCTestCase {
     func testFaceAlignment() async throws {
         throw XCTSkip()
         let dataSetLoader = DatasetLoader(url: self.dataSetLoaderURL)
-        let faceDetection = try FaceDetectionRetinaFaceOrt()
+        let faceDetection = try await FaceDetectionRetinaFaceOrt()
         var attachmentCount = 0
         let maxAttachmentCount: Int = 10
         for try await (url, image) in dataSetLoader.streamImages() {

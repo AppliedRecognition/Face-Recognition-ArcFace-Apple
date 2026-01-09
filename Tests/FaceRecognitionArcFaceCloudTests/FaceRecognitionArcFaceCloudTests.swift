@@ -14,13 +14,13 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     var recognition: FaceRecognitionArcFace!
     var faceDetection: FaceDetectionRetinaFaceOrt!
     
-    override func setUpWithError() throws {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         HTTPStubs.setEnabled(true)
         HTTPStubs.removeAllStubs()
-        self.testResources = try TestSupportResources()
-        self.recognition = try self.createFaceRecognition()
-        self.faceDetection = try FaceDetectionRetinaFaceOrt()
+        self.testResources = try await TestSupportResources()
+        self.recognition = try await self.createFaceRecognition()
+        self.faceDetection = try await FaceDetectionRetinaFaceOrt()
     }
     
     override func tearDown() {
@@ -44,7 +44,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
             }
         }
         let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
-        let faceRecognition = FaceRecognitionArcFace(apiKey: "", url: URL(string: "http://api.ver-id.com/face_templates")!)
+        let faceRecognition = await FaceRecognitionArcFace(apiKey: "", url: URL(string: "http://api.ver-id.com/face_templates")!)
         let templates = try await faceRecognition.createFaceRecognitionTemplates(from: [face], in: image)
         XCTAssertEqual(templates.count, 1)
     }
@@ -52,13 +52,13 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     func testCreateFaceTemplateInCloud() async throws {
         let subject = "subject1-01"
         let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
-        let faceRecognition = try self.createFaceRecognition()
+        let faceRecognition = try await self.createFaceRecognition()
         let templates = try await faceRecognition.createFaceRecognitionTemplates(from: [face], in: image)
         XCTAssertEqual(templates.count, 1)
     }
     
     func testCompareSubjects() async throws {
-        let faceRecognition = try self.createFaceRecognition()
+        let faceRecognition = try await self.createFaceRecognition()
         var templates: [FaceTemplate<V24,[Float]>] = []
         for subject in ["subject1-01", "subject1-02", "subject2-01"] {
             let (face, image) = try await self.testResources.faceAndImageForSubject(subject)
@@ -74,7 +74,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         XCTAssertLessThan(scoreDifferent, threshold)
     }
     
-    private func createFaceRecognition() throws -> FaceRecognitionArcFace {
+    private func createFaceRecognition() async throws -> FaceRecognitionArcFace {
         guard let configUrl = Bundle.module.url(forResource: "config", withExtension: "json") else {
             throw XCTSkip()
         }
@@ -87,7 +87,7 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         guard let url = URL(string: config.url) else {
             throw XCTSkip()
         }
-        return FaceRecognitionArcFace(apiKey: config.apiKey, url: url)
+        return await FaceRecognitionArcFace(apiKey: config.apiKey, url: url)
     }
     
     private func image(_ image: Image, croppedToFace face: CGRect) -> UIImage {
