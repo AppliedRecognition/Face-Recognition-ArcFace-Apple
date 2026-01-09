@@ -14,8 +14,8 @@ public class TestSupportResources {
     
     public let faceDetection: FaceDetectionRetinaFaceOrt
     
-    public init() throws {
-        self.faceDetection = try FaceDetectionRetinaFaceOrt()
+    public init() async throws {
+        self.faceDetection = try await FaceDetectionRetinaFaceOrt()
     }
     
     public static let bundle: Bundle = .module

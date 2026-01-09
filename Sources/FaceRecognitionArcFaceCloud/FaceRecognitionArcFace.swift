@@ -10,10 +10,10 @@ public class FaceRecognitionArcFace: FaceRecognitionArcFaceCore {
     let apiKey: String
     let url: URL
     
-    public init(apiKey: String, url: URL) {
+    public init(apiKey: String, url: URL) async {
         self.apiKey = apiKey
         self.url = url
-        try! super.init()
+        try! await super.init()
     }
     
     public override func createFaceRecognitionTemplatesFromAlignedFaces(_ alignedFaces: [UIImage]) async throws -> [FaceTemplate<V24,[Float]>] {

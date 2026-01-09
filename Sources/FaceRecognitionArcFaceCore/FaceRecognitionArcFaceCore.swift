@@ -20,11 +20,11 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
     
     let faceDetection: FaceDetectionRetinaFaceOrt
     
-    public init() throws {
+    public init() async throws {
         guard type(of: self) != FaceRecognitionArcFaceCore.self else {
             fatalError("Abstract base class called its initialiser")
         }
-        self.faceDetection = try FaceDetectionRetinaFaceOrt()
+        self.faceDetection = try await FaceDetectionRetinaFaceOrt()
     }
     
     public func createFaceRecognitionTemplates(from faces: [Face], in image: Image) async throws -> [FaceTemplate<V24,[Float]>] {
