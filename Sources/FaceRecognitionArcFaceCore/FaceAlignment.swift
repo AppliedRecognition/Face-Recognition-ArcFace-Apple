@@ -77,7 +77,7 @@ public class FaceAlignment {
     
     private init() {}
     
-    @_spi(Testing) public static func alignFace(_ face: Face, image: Image) throws -> UIImage {
+    @_spi(Testing) public static func alignFace(_ face: Face, image: Image, scale: Double = 2.85, verticalOffset: Double = 0.4) throws -> UIImage {
         guard let noseTip = face.noseTip else {
             throw FaceRecognitionError.faceMissingNoseTipLandmark
         }
@@ -94,17 +94,16 @@ public class FaceAlignment {
         } else {
             throw FaceRecognitionError.faceMissingMouthLandmarks
         }
-        let alignedBox = try FaceAlignment.alignFace(pts: landmarks, scale: 2.85)
+        let alignedBox = try FaceAlignment.alignFace(pts: landmarks, scale: scale, verticalOffset: verticalOffset)
         return try FaceAlignment.cropFace(in: image, to: alignedBox)
     }
     
-    static func alignFace(pts: [CGPoint], scale: Double = 1.0) throws -> RotatedBox {
+    static func alignFace(pts: [CGPoint], scale: Double = 2.85, verticalOffset: Double = 0.4) throws -> RotatedBox {
         let reg = LinearRegression()
         
-        let yofs = 0.35
-        let y0 = yofs - 0.5
-        let y1 = yofs + 0.04
-        let y2 = yofs + 0.5
+        let y0 = verticalOffset - 0.5
+        let y1 = verticalOffset + 0.04
+        let y2 = verticalOffset + 0.5
         
         reg.add(result: pts[0].x, x: -0.46, y: -y0, a: 1.0, b: 0.0)
         reg.add(result: pts[0].y, x: y0, y: -0.46, a: 0.0, b: 1.0)
