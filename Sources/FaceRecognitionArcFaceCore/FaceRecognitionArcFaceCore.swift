@@ -10,6 +10,10 @@ import VerIDCommonTypes
 import UIKit
 import Accelerate
 import FaceDetectionRetinaFaceOrt
+// Alignment and the error type now live in their own target, which has no face
+// detection dependency. Re-exported so that importers of this module keep seeing
+// `FaceAlignment` and `FaceRecognitionError` without an extra import.
+@_exported import FaceAlignmentCore
 
 open class FaceRecognitionArcFaceCore: FaceRecognition {
 
@@ -30,7 +34,11 @@ open class FaceRecognitionArcFaceCore: FaceRecognition {
     public func createFaceRecognitionTemplates(from faces: [Face], in image: Image) async throws -> [FaceTemplate<V24,[Float]>] {
         let refinedFaces = try await self.refineFaces(faces, inImage: image)
         let alignedFaces = try refinedFaces.map { face in
-            try FaceAlignment.alignFace(face, image: image)
+            // V24 keeps 0.4 explicitly. `FaceAlignment`'s shared default is 0.35,
+            // matching every non-Apple implementation, but V24 is a legacy template
+            // version and its enrolments were produced at 0.4. Passing the value
+            // here means a change to the shared default cannot move V24 silently.
+            try FaceAlignment.alignFace(face, image: image, scale: 2.85, verticalOffset: 0.4)
         }
         let templates = try await self.createFaceRecognitionTemplatesFromAlignedFaces(alignedFaces)
         return templates.map { template in

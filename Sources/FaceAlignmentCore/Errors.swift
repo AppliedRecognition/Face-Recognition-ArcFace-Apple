@@ -7,6 +7,11 @@
 
 import Foundation
 
+/// Errors raised by face recognition and face alignment.
+///
+/// Moved here with ``FaceAlignment`` so that the alignment target has no face
+/// detection dependency, and so that the errors alignment throws keep their
+/// existing names for callers.
 public enum FaceRecognitionError: LocalizedError {
     case faceTemplateExtractionFailed
     case imageEncodingFailure
@@ -15,7 +20,7 @@ public enum FaceRecognitionError: LocalizedError {
     case faceMissingMouthLandmarks
     case faceAlignmentFailure
     case faceDetectionFailure
-    
+
     public var errorDescription: String? {
         switch self {
         case .faceTemplateExtractionFailed:

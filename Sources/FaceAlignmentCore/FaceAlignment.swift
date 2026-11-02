@@ -1,5 +1,5 @@
 //
-//  Alignment.swift
+//  FaceAlignment.swift
 //
 //
 //  Created by Jakub Dolejs on 18/03/2025.
@@ -13,20 +13,20 @@ import VerIDCommonTypes
 class LinearRegression {
     private var data: [[Double]] = []
     private var results: [Double] = []
-    
+
     func add(result: Double, x: Double, y: Double, a: Double, b: Double) {
         data.append([x, y, a, b])
         results.append(result)
     }
-    
+
     func compute() -> [Double] {
         let rowCount = data.count
         let colCount = 4
-        
+
         guard rowCount >= colCount else {
             return [] // Least squares needs at least as many rows as columns
         }
-        
+
         // Convert to a column-major order matrix (LAPACK expects this)
         var A = [Double](repeating: 0.0, count: rowCount * colCount)
         for row in 0..<rowCount {
@@ -34,12 +34,12 @@ class LinearRegression {
                 A[col * rowCount + row] = data[row][col] // Transpose manually
             }
         }
-        
+
         var B = results
         var singularValues = [Double](repeating: 0.0, count: colCount)
         var workSize: Int32 = -1
         var info: Int32 = 0
-        
+
         var m = __CLPK_integer(rowCount)
         var n = __CLPK_integer(colCount)
         var nrhs = __CLPK_integer(1)
@@ -47,23 +47,22 @@ class LinearRegression {
         var ldb = m
         var rank: __CLPK_integer = 0
         var rcond: Double = -1.0 // Default threshold
-        
+
         var queryWork = [Double](repeating: 0.0, count: 1)
         var iwork = [__CLPK_integer](repeating: 0, count: 8 * colCount)
-        
+
         // Query optimal workspace size
         dgelsd_(&m, &n, &nrhs, &A, &lda, &B, &ldb, &singularValues, &rcond, &rank, &queryWork, &workSize, &iwork, &info)
-        
+
         workSize = Int32(queryWork[0])
         var work = [Double](repeating: 0.0, count: Int(workSize))
-        
+
         // Solve least squares problem
         dgelsd_(&m, &n, &nrhs, &A, &lda, &B, &ldb, &singularValues, &rcond, &rank, &work, &workSize, &iwork, &info)
-        
+
         return info == 0 ? Array(B.prefix(colCount)) : []
     }
 }
-
 
 struct RotatedBox {
     let center: CGPoint
@@ -72,12 +71,33 @@ struct RotatedBox {
     let height: Double
 }
 
-@_spi(Testing)
+/// Face alignment from a set of facial landmarks.
+///
+/// This lives in its own target, with no face detection dependency, so that a
+/// caller can align faces without linking a detector. It previously sat inside
+/// `FaceRecognitionArcFaceCore`, whose target depends on
+/// `FaceDetectionRetinaFaceOrt`, so any module importing alignment also linked
+/// ONNX Runtime whether or not it ran a detector.
+///
+/// The shared default `verticalOffset` is 0.35, which matches Android, the
+/// browser and the model service. Callers that need to preserve an older
+/// alignment should pass the value they need explicitly rather than relying on
+/// this default, since one default now serves every template version.
+/// - Since: 3.0.0
 public class FaceAlignment {
-    
+
     private init() {}
-    
-    @_spi(Testing) public static func alignFace(_ face: Face, image: Image, scale: Double = 2.85, verticalOffset: Double = 0.4) throws -> UIImage {
+
+    /// Align and crop a face to a square image using its landmarks
+    /// - Parameters:
+    ///   - face: Face to align
+    ///   - image: Image containing the face
+    ///   - scale: Side of the crop as a multiple of the interocular distance
+    ///   - verticalOffset: Vertical placement of the eyes within the crop
+    /// - Returns: The aligned face image
+    /// - Throws: ``FaceRecognitionError`` if the face is missing landmarks or cannot be cropped
+    /// - Since: 3.0.0
+    public static func alignFace(_ face: Face, image: Image, scale: Double = 2.85, verticalOffset: Double = 0.35) throws -> UIImage {
         guard let noseTip = face.noseTip else {
             throw FaceRecognitionError.faceMissingNoseTipLandmark
         }
@@ -97,47 +117,47 @@ public class FaceAlignment {
         let alignedBox = try FaceAlignment.alignFace(pts: landmarks, scale: scale, verticalOffset: verticalOffset)
         return try FaceAlignment.cropFace(in: image, to: alignedBox)
     }
-    
-    static func alignFace(pts: [CGPoint], scale: Double = 2.85, verticalOffset: Double = 0.4) throws -> RotatedBox {
+
+    static func alignFace(pts: [CGPoint], scale: Double = 2.85, verticalOffset: Double = 0.35) throws -> RotatedBox {
         let reg = LinearRegression()
-        
+
         let y0 = verticalOffset - 0.5
         let y1 = verticalOffset + 0.04
         let y2 = verticalOffset + 0.5
-        
+
         reg.add(result: pts[0].x, x: -0.46, y: -y0, a: 1.0, b: 0.0)
         reg.add(result: pts[0].y, x: y0, y: -0.46, a: 0.0, b: 1.0)
-        
+
         reg.add(result: pts[1].x, x: 0.46, y: -y0, a: 1.0, b: 0.0)
         reg.add(result: pts[1].y, x: y0, y: 0.46, a: 0.0, b: 1.0)
-        
+
         reg.add(result: pts[2].x, x: 0.0, y: -y1, a: 1.0, b: 0.0)
         reg.add(result: pts[2].y, x: y1, y: 0.0, a: 0.0, b: 1.0)
-        
+
         if pts.count == 4 {
             reg.add(result: pts[3].x, x: 0.0, y: -y2, a: 1.0, b: 0.0)
             reg.add(result: pts[3].y, x: y2, y: 0.0, a: 0.0, b: 1.0)
         } else {
             reg.add(result: pts[3].x, x: -0.39, y: -y2, a: 1.0, b: 0.0)
             reg.add(result: pts[3].y, x: y2, y: -0.39, a: 0.0, b: 1.0)
-            
+
             reg.add(result: pts[4].x, x: 0.39, y: -y2, a: 1.0, b: 0.0)
             reg.add(result: pts[4].y, x: y2, y: 0.39, a: 0.0, b: 1.0)
         }
-        
+
         let c = reg.compute()
         guard c.count == 4 else {
             throw FaceRecognitionError.faceAlignmentFailure
         }
-        
+
         let centerX = c[2]
         let centerY = c[3]
         let angle = atan2(c[1], c[0])
         let widthHeight = scale * sqrt(c[0] * c[0] + c[1] * c[1])
-        
+
         return RotatedBox(center: CGPoint(x: centerX, y: centerY), angle: angle, width: widthHeight, height: widthHeight)
     }
-    
+
     private static func cropFace(in image: Image, to rotatedBox: RotatedBox, targetSize: CGSize = CGSize(width: 112, height: 112)) throws -> UIImage {
         return try autoreleasepool {
             guard let uiImage = image.toUIImage() else {
