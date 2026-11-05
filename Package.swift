@@ -18,7 +18,12 @@ let package = Package(
             targets: ["FaceRecognitionArcFaceCore"]),
         .library(
             name: "FaceDetectionRetinaFaceOrt",
-            targets: ["FaceDetectionRetinaFaceOrt"])
+            targets: ["FaceDetectionRetinaFaceOrt"]),
+        // Alignment on its own, with no face detection dependency, so callers can
+        // align faces without linking ONNX Runtime.
+        .library(
+            name: "FaceAlignmentCore",
+            targets: ["FaceAlignmentCore"])
     ],
     dependencies: [
         .package(url: "https://github.com/AppliedRecognition/Ver-ID-Common-Types-Apple.git", .upToNextMajor(from: "3.0.0")),
@@ -34,8 +39,14 @@ let package = Package(
                 "FaceRecognitionArcFaceCore"
             ]),
         .target(
+            name: "FaceAlignmentCore",
+            dependencies: [
+                .product(name: "VerIDCommonTypes", package: "Ver-ID-Common-Types-Apple")
+            ]),
+        .target(
             name: "FaceRecognitionArcFaceCore",
             dependencies: [
+                "FaceAlignmentCore",
                 "FaceDetectionRetinaFaceOrt",
                 .product(name: "VerIDCommonTypes", package: "Ver-ID-Common-Types-Apple")
             ]),
