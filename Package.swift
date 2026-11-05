@@ -18,15 +18,14 @@ let package = Package(
             targets: ["FaceRecognitionArcFaceCore"]),
         .library(
             name: "FaceDetectionRetinaFaceOrt",
-            targets: ["FaceDetectionRetinaFaceOrt"]),
-        // Alignment on its own, with no face detection dependency, so callers can
-        // align faces without linking ONNX Runtime.
-        .library(
-            name: "FaceAlignmentCore",
-            targets: ["FaceAlignmentCore"])
+            targets: ["FaceDetectionRetinaFaceOrt"])
     ],
     dependencies: [
         .package(url: "https://github.com/AppliedRecognition/Ver-ID-Common-Types-Apple.git", .upToNextMajor(from: "3.0.0")),
+        // Alignment moved out into its own package. Keeping the target here meant every
+        // consumer of alignment pulled this package's ONNX Runtime detector in as well,
+        // because SwiftPM resolves dependencies per package rather than per product.
+        .package(url: "https://github.com/AppliedRecognition/Face-Alignment-Apple.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", .upToNextMajor(from: "9.1.0")),
         .package(url: "https://github.com/microsoft/onnxruntime-swift-package-manager.git", .upToNextMajor(from: "1.20.0"))
     ],
@@ -39,14 +38,9 @@ let package = Package(
                 "FaceRecognitionArcFaceCore"
             ]),
         .target(
-            name: "FaceAlignmentCore",
-            dependencies: [
-                .product(name: "VerIDCommonTypes", package: "Ver-ID-Common-Types-Apple")
-            ]),
-        .target(
             name: "FaceRecognitionArcFaceCore",
             dependencies: [
-                "FaceAlignmentCore",
+                .product(name: "FaceAlignmentCore", package: "Face-Alignment-Apple"),
                 "FaceDetectionRetinaFaceOrt",
                 .product(name: "VerIDCommonTypes", package: "Ver-ID-Common-Types-Apple")
             ]),
