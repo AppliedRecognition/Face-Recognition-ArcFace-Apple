@@ -1,6 +1,15 @@
 {
   "pins" : [
     {
+      "identity" : "face-alignment-apple",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/AppliedRecognition/Face-Alignment-Apple.git",
+      "state" : {
+        "revision" : "ec5bdc757a42d6f471b44ebdaf0670a85aaf5c31",
+        "version" : "1.0.0"
+      }
+    },
+    {
       "identity" : "ohhttpstubs",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AliSoftware/OHHTTPStubs.git",

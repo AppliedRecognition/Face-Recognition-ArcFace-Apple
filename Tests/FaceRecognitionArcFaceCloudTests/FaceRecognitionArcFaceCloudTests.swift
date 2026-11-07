@@ -11,7 +11,7 @@ import FaceDetectionRetinaFaceOrt
 final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     
     var testResources: TestSupportResources!
-    var recognition: FaceRecognitionArcFace!
+    var recognition: FaceRecognitionArcFace?
     var faceDetection: FaceDetectionRetinaFaceOrt!
     
     override func setUp() async throws {
@@ -19,7 +19,11 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         HTTPStubs.setEnabled(true)
         HTTPStubs.removeAllStubs()
         self.testResources = try await TestSupportResources()
-        self.recognition = try await self.createFaceRecognition()
+        // Deliberately `try?`. `createFaceRecognition()` skips when no cloud key is available, and
+        // a skip thrown from `setUp` skips every test in the class -- including the stubbed one
+        // that needs no key at all. A nil here means "no key", and the tests that do need one
+        // skip themselves.
+        self.recognition = try? await self.createFaceRecognition()
         self.faceDetection = try await FaceDetectionRetinaFaceOrt()
     }
     
@@ -31,7 +35,10 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
     
     func testCreateFaceTemplate() async throws {
         let subject = "subject1-01"
-        stub(condition: isPath("/face_templates") && isMethodPOST()) { _ in
+        // `pathEndsWith`, not `isPath`: the configured endpoint's path is
+        // `/Prod/extract_face_templates`, so an exact match never fired and this test was
+        // reaching the live service rather than its own stub.
+        stub(condition: pathEndsWith("/face_templates") && isMethodPOST()) { _ in
             guard let faceTemplateData = self.testResources.faceTemplateForSubject(subject) else {
                 return HTTPStubsResponse(data: Data(), statusCode: 500, headers: nil)
             }
@@ -87,7 +94,20 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         guard let url = URL(string: config.url) else {
             throw XCTSkip()
         }
-        return await FaceRecognitionArcFace(apiKey: config.apiKey, url: url)
+        guard let apiKey = Self.cloudAPIKey else {
+            throw XCTSkip("Set VERID_CLOUD_API_KEY to run the tests that call the cloud service.")
+        }
+        return await FaceRecognitionArcFace(apiKey: apiKey, url: url)
+    }
+
+    /// The cloud API key, taken from the environment.
+    ///
+    /// It used to sit in `Resources/config.json`, which is committed — and this repository is
+    /// public — so a live key for a metered service was republished in every clone. The endpoint
+    /// stays in the committed config; the key does not. Without one the cloud tests skip, which
+    /// is what a test needing a credential should do on a machine that has none.
+    private static var cloudAPIKey: String? {
+        ProcessInfo.processInfo.environment["VERID_CLOUD_API_KEY"].flatMap { $0.isEmpty ? nil : $0 }
     }
     
     private func image(_ image: Image, croppedToFace face: CGRect) -> UIImage {
@@ -145,7 +165,10 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
         let scaledFaceImage = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
             faceImage.draw(in: CGRect(origin: .zero, size: size))
         }
-        guard let template = try await self.recognition.createFaceRecognitionTemplates(from: [face], in: image).first else {
+        guard let recognition = self.recognition else {
+            throw XCTSkip("Set VERID_CLOUD_API_KEY to run the tests that call the cloud service.")
+        }
+        guard let template = try await recognition.createFaceRecognitionTemplates(from: [face], in: image).first else {
             throw TestError("Face template extraction failed")
         }
         return ImageFacePackage(template: template, faceImage: scaledFaceImage)
@@ -154,7 +177,6 @@ final class FaceRecognitionArcFaceCloudTests: XCTestCase {
 
 fileprivate struct Config: Decodable {
     
-    let apiKey: String
     let url: String
     
 }
